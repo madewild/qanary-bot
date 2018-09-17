@@ -2,7 +2,6 @@
   "name": "qanary-bot",
   "version": "1.0.0",
   "dependencies": {
-    "@google-cloud/translate": "^2.1.1",
     "botkit": "^0.6.16",
     "https": "^1.0.0",
     "request": "^2.88.0"
