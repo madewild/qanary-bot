@@ -74,7 +74,7 @@ controller.hears('', 'direct_message,direct_mention,mention,ambient', function(b
             translated_text = data.translatedText;
             console.log("Translated text: " + translated_text);
         }
-        var url = "http://wdaqua-core1.univ-st-etienne.fr/gerbil";
+        var url = "http://qanswer-core1.univ-st-etienne.fr/gerbil";
         var formdata = {'query': translated_text};
         request.post({url: url, form: formdata}, function (error, response, body){
             var data = JSON.parse(body);
