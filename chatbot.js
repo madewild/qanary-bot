@@ -50,6 +50,32 @@ controller.on('rtm_close', function(bot, err) {
     start_rtm();
 });
 
+controller.hears(['hello', 'hi'], 'direct_message,direct_mention,mention,ambient', function(bot, message) {
+
+    bot.api.reactions.add({
+        timestamp: message.ts,
+        channel: message.channel,
+        name: 'robot_face',
+    }, function(err, res) {
+        if (err) {
+            bot.botkit.log('Failed to add emoji reaction :(', err);
+        }
+    });
+
+
+    controller.storage.users.get(message.user, function(err, user) {
+        if (user && user.name) {
+            bot.reply(message, 'Hello ' + user.name + '!!');
+        } else {
+            bot.reply(message, 'Hello, how can I help you?');
+        }
+    });
+});
+
+controller.hears(['thank', 'thanx'], 'direct_message,direct_mention,mention,ambient', function(bot, message) {
+    bot.reply(message, "You're welcome! :slightly_smiling_face:");
+});
+
 controller.hears('', 'direct_message,direct_mention,mention,ambient', function(bot, message) {
 
     bot.say(
@@ -78,81 +104,94 @@ controller.hears('', 'direct_message,direct_mention,mention,ambient', function(b
         var formdata = {'query': translated_text};
         request.post({url: url, form: formdata}, function (error, response, body){
             var data = JSON.parse(body);
-            var answers = JSON.parse(data.questions[0].question.answers);
-            if (answers) {
-                var results = answers.results;
-                if (results) {
-                    var binding = results.bindings[0];
-                    if (binding) {
-                        for (var key in binding) {
-                            var content = binding[key];
-                            var value = content.value;
-                            console.log(value);
-                            if (value.includes("wikidata")) {
-                                var wdid = value.split(/[\/]+/).pop();
-                                var wikilang = lang_code + "wiki"
-                                var wdurl = "https://www.wikidata.org/w/api.php?action=wbgetentities&format=json&props=sitelinks&sitefilter=" + wikilang + "&ids=" + wdid
-                                request(wdurl, function (error, response, wdbody){
-                                    var wddata = JSON.parse(wdbody);
-                                    var entities = wddata.entities;
-                                    for (var key in entities) {
-                                        var content = entities[key];
-                                        var sitelinks = content.sitelinks;
-                                        if (Object.keys(sitelinks).length > 0) {
-                                            for (var key in sitelinks) {
-                                                var wiki = sitelinks[key];
-                                                var title = wiki.title;
-                                                console.log(title);
-                                                if (text.endsWith("?")) {
-                                                    var finalurl = "https://" + lang_code + ".wikipedia.org/wiki/" + title.replace(/\s/g, "_");
-                                                    bot.reply(message, finalurl);
-                                                } else {
-                                                    bot.reply(message, title);
-                                                }
-                                            }
-                                        } else {
-                                            console.log("No wikilink in this language...");
-                                            var summary = "https://www.wikidata.org/w/api.php?action=wbgetentities&format=json&props=labels&ids=" + wdid;
-                                            request(summary, function (error, response, wdbody){
-                                                var wddata = JSON.parse(wdbody);
-                                                var entities = wddata.entities;
-                                                for (var key in entities) {
-                                                    var content = entities[key];
-                                                    var labels = content.labels;
-                                                    var label = labels.en;
-                                                    if (label) {
-                                                        value = label.value;
-                                                        console.log(value);
-                                                        bot.reply(message, value);
-                                                    } else {
-                                                        console.log("No label either...");
-                                                        dunno(message, lang_code);
+            console.log(data);
+            var questions = data.questions;
+            if(questions) {
+                var answers = JSON.parse(questions[0].question.answers);
+                if (answers) {
+                    var results = answers.results;
+                    if (results) {
+                        var binding = results.bindings[0];
+                        if (binding) {
+                            for (var key in binding) {
+                                var content = binding[key];
+                                var value = content.value;
+                                console.log(value);
+                                if (value.includes("wikidata")) {
+                                    var wdid = value.split(/[\/]+/).pop();
+                                    var wikilang = lang_code + "wiki"
+                                    var wdurl = "https://www.wikidata.org/w/api.php?action=wbgetentities&format=json&props=sitelinks&sitefilter=" + wikilang + "&ids=" + wdid
+                                    request(wdurl, function (error, response, wdbody){
+                                        var wddata = JSON.parse(wdbody);
+                                        var entities = wddata.entities;
+                                        for (var key in entities) {
+                                            var content = entities[key];
+                                            var sitelinks = content.sitelinks;
+                                            if(sitelinks) {
+                                                if (Object.keys(sitelinks).length > 0) {
+                                                    for (var key in sitelinks) {
+                                                        var wiki = sitelinks[key];
+                                                        var title = wiki.title;
+                                                        console.log(title);
+                                                        if (text.endsWith("?")) {
+                                                            var finalurl = "https://" + lang_code + ".wikipedia.org/wiki/" + title.replace(/\s/g, "_");
+                                                            bot.reply(message, finalurl);
+                                                        } else {
+                                                            bot.reply(message, title);
+                                                        }
                                                     }
-                                                }
-                                            });
-                                        }  
-                                    }
-                                });
-                            } else if (value.includes("T00:00:00Z")) {
-                                var date = value.substring(0, 10);
-                                bot.reply(message, date);
-                            } else if (value.startsWith("+")) {
-                                var number = value.replace(/\+/, "");
-                                bot.reply(message, number);
-                            } else {
-                                bot.reply(message, value);
+                                                } else {
+                                                    console.log("No wikilink in this language...");
+                                                    var summary = "https://www.wikidata.org/w/api.php?action=wbgetentities&format=json&props=labels&ids=" + wdid;
+                                                    request(summary, function (error, response, wdbody){
+                                                        var wddata = JSON.parse(wdbody);
+                                                        var entities = wddata.entities;
+                                                        for (var key in entities) {
+                                                            var content = entities[key];
+                                                            var labels = content.labels;
+                                                            var label = labels.en;
+                                                            if (label) {
+                                                                value = label.value;
+                                                                console.log(value);
+                                                                bot.reply(message, value);
+                                                            } else {
+                                                                console.log("No label either...");
+                                                                dunno(message, lang_code);
+                                                            }
+                                                        }
+                                                    });
+                                                }  
+                                            } else {
+                                                console.log("This is not an entity...")
+                                                dunno(message, lang_code);
+                                            }
+                                        }
+                                    });
+                                } else if (value.includes("T00:00:00Z")) {
+                                    var date = value.substring(0, 10);
+                                    bot.reply(message, date);
+                                } else if (value.startsWith("+")) {
+                                    var number = value.replace(/\+/, "");
+                                    bot.reply(message, number);
+                                } else {
+                                    bot.reply(message, value);
+                                }
                             }
+                        } else {
+                            console.log("No binding...");
+                            dunno(message, lang_code);
                         }
                     } else {
-                        console.log("No binding...");
+                        console.log("No result...");
                         dunno(message, lang_code);
                     }
                 } else {
-                    console.log("No result...");
+                    console.log("No answer...");
                     dunno(message, lang_code);
                 }
             } else {
-                console.log("No answer...");
+                var error = data['error'];
+                console.log(error);
                 dunno(message, lang_code);
             }
         });
